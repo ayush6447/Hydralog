@@ -1,16 +1,36 @@
-# water_count
+# Hydralog 💧
 
-A new Flutter project.
+**Track your daily water intake effortlessly and stay hydrated with Hydralog!**
+
+---
+
+## Overview
+
+Hydralog is a sleek, user-friendly Flutter app designed to help you monitor and log your daily water consumption. With an elegant dark theme and smooth animations, Hydralog makes hydration tracking simple, fun, and visually engaging.
+
+---
+
+## Features
+
+- **Intuitive Water Intake Logging:** Add your water intake with a single tap.
+- **Custom Amounts:** Log exact amounts like 500ml, 750ml, or 1L.
+- **Visual Progress:** Animated buttons and water cup icons that bring your hydration journey to life.
+- **History Bar Graph:** Easily review your hydration patterns over time with a clean, interactive graph.
+- **Local Storage:** All data saved locally on your device—no sign-in or internet needed.
+- **Dark Theme:** Easy on the eyes, perfect for day and night use.
+
+---
 
 ## Getting Started
 
-This project is a starting point for a Flutter application.
+### Prerequisites
 
-A few resources to get you started if this is your first Flutter project:
+- Flutter SDK installed ([Flutter installation guide](https://flutter.dev/docs/get-started/install))
+- Compatible device or emulator
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+### Installation
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+1. Clone this repository  
+   ```bash
+   git clone https://github.com/ayush6447/Hydralog.git
+   cd Hydralog
