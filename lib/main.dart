@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
+import 'services/notification_service.dart';
 
-void main() => runApp(const WaterTrackerApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await NotificationService.initialize(); // <-- for Android 13+
+  runApp(const WaterTrackerApp());
+}
+
 
 class WaterTrackerApp extends StatelessWidget {
   const WaterTrackerApp({super.key});
@@ -10,12 +16,13 @@ class WaterTrackerApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Water Tracker',
+      title: 'Hydralog',
       theme: ThemeData.dark().copyWith(
         scaffoldBackgroundColor: const Color(0xFF121212),
         colorScheme: const ColorScheme.dark(
           primary: Colors.cyanAccent,
           secondary: Colors.tealAccent,
+
         ),
       ),
       home: const WaterTrackerHomePage(),
@@ -37,7 +44,7 @@ class _WaterTrackerHomePageState extends State<WaterTrackerHomePage> with Single
   int _goal = 3000;
   Map<String, int> _historyMap = {};
 
-  String name = 'John Doe';
+  String name = 'ak';
   int age = 25;
   double height = 170.0;
   double weight = 70.0;
@@ -81,7 +88,7 @@ class _WaterTrackerHomePageState extends State<WaterTrackerHomePage> with Single
         _historyMap = {};
       }
 
-      name = prefs.getString('name') ?? 'John Doe';
+      name = prefs.getString('name') ?? 'ak';
       age = prefs.getInt('age') ?? 25;
       height = prefs.getDouble('height') ?? 170.0;
       weight = prefs.getDouble('weight') ?? 70.0;
@@ -117,10 +124,15 @@ class _WaterTrackerHomePageState extends State<WaterTrackerHomePage> with Single
   }
 
   void _addWater(int amount) {
-    setState(() {
+    setState(() async {
       _currentIntake += amount;
       String todayKey = DateFormat('yyyy-MM-dd').format(DateTime.now());
       _historyMap[todayKey] = (_historyMap[todayKey] ?? 0) + amount;
+      if (_currentIntake >= _goal) {
+        await NotificationService.cancelAll();
+      }
+      await NotificationService.scheduleRandomNotifications();
+
     });
     _animateProgress();
     _saveData();
@@ -298,6 +310,7 @@ class _WaterTrackerHomePageState extends State<WaterTrackerHomePage> with Single
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
+
               _animatedIntakeButton('500 ml', 500),
               _animatedIntakeButton('750 ml', 750),
               _animatedIntakeButton('1 L', 1000),
