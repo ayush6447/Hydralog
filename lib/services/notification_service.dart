@@ -1,27 +1,27 @@
 import 'dart:math';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tzdata;
+import 'package:permission_handler/permission_handler.dart';
 
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _notificationsPlugin =
   FlutterLocalNotificationsPlugin();
 
   static Future<void> initialize() async {
-    // Request notification permission for Android 13+
+    // Request notification permission (Android 13+)
     await _requestNotificationPermission();
+
+    // Initialize timezone data
     tzdata.initializeTimeZones();
 
+    // Set local timezone to India (Asia/Kolkata)
+    tz.setLocalLocation(tz.getLocation('Asia/Kolkata'));
 
-    const AndroidInitializationSettings androidSettings =
-    AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const initSettings = InitializationSettings(android: androidSettings);
 
-    const InitializationSettings settings = InitializationSettings(
-      android: androidSettings,
-    );
-
-    await _notificationsPlugin.initialize(settings);
+    await _notificationsPlugin.initialize(initSettings);
   }
 
   static Future<void> _requestNotificationPermission() async {
@@ -31,52 +31,36 @@ class NotificationService {
     }
   }
 
-  static Future<void> showNotification({
-    required int id,
-    required String title,
-    required String body,
-  }) async {
-    const AndroidNotificationDetails androidDetails =
-    AndroidNotificationDetails(
-      'hydration_channel',
-      'Hydration Reminders',
-      channelDescription: 'Reminds user to drink water',
-      importance: Importance.max,
-      priority: Priority.high,
-      playSound: true,
-    );
 
-    const NotificationDetails notificationDetails =
-    NotificationDetails(android: androidDetails);
-
-    await _notificationsPlugin.show(
-      id,
-      title,
-      body,
-      notificationDetails,
-    );
-  }
-
-  // Example: schedule random reminders (between 8 AM to 10 PM)
-  static Future<void> scheduleRandomHydrationReminders(int count) async {
-    final now = DateTime.now();
+  /// Schedule 8-9 random daily hydration reminders at random times (00:00 - 23:59)
+  static Future<void> scheduleDailyRandomReminders() async {
+    final now = tz.TZDateTime.now(tz.local);
     final random = Random();
 
-    for (int i = 0; i < count; i++) {
-      final int hour = 8 + random.nextInt(14); // between 8 and 21
+    // Random count between 8 and 9
+    final int notificationCount = 8 + random.nextInt(2); // 8 or 9
+
+    for (int i = 0; i < notificationCount; i++) {
+      // Random hour between 0 and 23
+      final int hour = random.nextInt(24);
+      // Random minute between 0 and 59
       final int minute = random.nextInt(60);
-      final scheduledTime = tz.TZDateTime.local(now.year, now.month, now.day, hour, minute);
+
+      final scheduledTime =
+      tz.TZDateTime(tz.local, now.year, now.month, now.day, hour, minute);
+
+      print('⏰ Scheduling daily notification $i for: $scheduledTime');
 
       await _notificationsPlugin.zonedSchedule(
         i,
-        'Hydration Reminder 💧',
-        'Time to drink some water!',
-        scheduledTime.toUtc().subtract(Duration(hours: now.timeZoneOffset.inHours)),
+        '💧 Time to Hydrate!',
+        'Remember to drink water regularly.',
+        scheduledTime,
         const NotificationDetails(
           android: AndroidNotificationDetails(
             'hydration_channel',
             'Hydration Reminders',
-            channelDescription: 'Reminds user to drink water',
+            channelDescription: 'Reminders to drink water throughout the day',
             importance: Importance.high,
             priority: Priority.high,
             playSound: true,
@@ -85,7 +69,7 @@ class NotificationService {
         androidAllowWhileIdle: true,
         uiLocalNotificationDateInterpretation:
         UILocalNotificationDateInterpretation.wallClockTime,
-        matchDateTimeComponents: DateTimeComponents.time,
+        matchDateTimeComponents: DateTimeComponents.time, // repeat daily at same time
       );
     }
   }
@@ -93,29 +77,6 @@ class NotificationService {
   static Future<void> cancelAllNotifications() async {
     await _notificationsPlugin.cancelAll();
   }
-  static Future<void> cancelAll() async {
-    await _notificationsPlugin.cancelAll();
-  }
-
-  static Future<void> scheduleRandomNotifications() async {
-    await scheduleRandomHydrationReminders(5); // or however many you want
-  }
-  static Future<void> showTestNotification() async {
-    await _notificationsPlugin.show(
-      0,
-      '💧 Time to Hydrate!',
-      'This is a test reminder to drink water.',
-      const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'hydration_channel',
-          'Hydration Reminders',
-          channelDescription: 'Reminders to drink water throughout the day',
-          importance: Importance.max,
-          priority: Priority.high,
-        ),
-      ),
-    );
-  }
-
 
 }
+

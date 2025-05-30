@@ -2,10 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 import 'services/notification_service.dart';
+import 'package:timezone/data/latest_all.dart' as tz;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await NotificationService.initialize(); // <-- for Android 13+
+
+  // Initialize notifications
+  await NotificationService.initialize();
+
+  // Cancel all previous notifications (optional, helps during testing)
+  await NotificationService.cancelAllNotifications();
+
+  // Schedule 8-9 daily hydration reminders at random times
+  await NotificationService.scheduleDailyRandomReminders();
+
   runApp(const WaterTrackerApp());
 }
 
@@ -110,6 +120,7 @@ class _WaterTrackerHomePageState extends State<WaterTrackerHomePage> with Single
     await prefs.setDouble('weight', weight);
   }
 
+
   void _animateProgress() {
     double startProgress = (_previousIntake / _goal).clamp(0.0, 1.0);
     double endProgress = (_currentIntake / _goal).clamp(0.0, 1.0);
@@ -124,14 +135,11 @@ class _WaterTrackerHomePageState extends State<WaterTrackerHomePage> with Single
   }
 
   void _addWater(int amount) {
-    setState(() async {
+    setState(()  {
       _currentIntake += amount;
       String todayKey = DateFormat('yyyy-MM-dd').format(DateTime.now());
       _historyMap[todayKey] = (_historyMap[todayKey] ?? 0) + amount;
-      if (_currentIntake >= _goal) {
-        await NotificationService.cancelAll();
-      }
-      await NotificationService.scheduleRandomNotifications();
+
 
     });
     _animateProgress();
@@ -650,4 +658,3 @@ class _WeekdayLabel extends StatelessWidget {
     );
   }
 }
-
