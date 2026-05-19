@@ -6,55 +6,72 @@ import 'package:permission_handler/permission_handler.dart';
 
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _notificationsPlugin =
-  FlutterLocalNotificationsPlugin();
+      FlutterLocalNotificationsPlugin();
+
+  // Waking hours window: 7 AM to 10 PM
+  static const int _startHour = 7;
+  static const int _endHour = 22;
 
   static Future<void> initialize() async {
-    // Request notification permission (Android 13+)
     await _requestNotificationPermission();
 
-    // Initialize timezone data
     tzdata.initializeTimeZones();
 
-    // Set local timezone to India (Asia/Kolkata)
-    tz.setLocalLocation(tz.getLocation('Asia/Kolkata'));
+    // Use device local timezone instead of hardcoded India timezone
+    final String localTimeZoneName = DateTime.now().timeZoneName;
+    try {
+      tz.setLocalLocation(tz.getLocation(localTimeZoneName));
+    } catch (_) {
+      // Fallback to UTC if timezone name can't be resolved
+      tz.setLocalLocation(tz.UTC);
+    }
 
     const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const initSettings = InitializationSettings(android: androidSettings);
+    const iosSettings = DarwinInitializationSettings(
+      requestAlertPermission: true,
+      requestBadgePermission: true,
+      requestSoundPermission: true,
+    );
+    const initSettings = InitializationSettings(android: androidSettings, iOS: iosSettings);
 
     await _notificationsPlugin.initialize(initSettings);
   }
 
   static Future<void> _requestNotificationPermission() async {
-    if (await Permission.notification.isDenied ||
-        await Permission.notification.isPermanentlyDenied) {
+    final status = await Permission.notification.status;
+    if (status.isDenied || status.isPermanentlyDenied) {
       await Permission.notification.request();
     }
   }
 
-
-  /// Schedule 8-9 random daily hydration reminders at random times (00:00 - 23:59)
+  /// Schedule 8 daily hydration reminders spread across waking hours (7 AM – 10 PM)
   static Future<void> scheduleDailyRandomReminders() async {
     final now = tz.TZDateTime.now(tz.local);
     final random = Random();
 
-    // Random count between 8 and 9
-    final int notificationCount = 8 + random.nextInt(2); // 8 or 9
+    const int notificationCount = 8;
+    final int totalMinutes = (_endHour - _startHour) * 60;
+    final int windowPerSlot = totalMinutes ~/ notificationCount;
 
     for (int i = 0; i < notificationCount; i++) {
-      // Random hour between 0 and 23
-      final int hour = random.nextInt(24);
-      // Random minute between 0 and 59
-      final int minute = random.nextInt(60);
+      // Each reminder gets its own time slot to spread them evenly
+      final int slotStart = _startHour * 60 + i * windowPerSlot;
+      final int randomOffset = random.nextInt(windowPerSlot);
+      final int totalMinute = slotStart + randomOffset;
 
-      final scheduledTime =
-      tz.TZDateTime(tz.local, now.year, now.month, now.day, hour, minute);
+      final int hour = totalMinute ~/ 60;
+      final int minute = totalMinute % 60;
 
-      print('⏰ Scheduling daily notification $i for: $scheduledTime');
+      var scheduledTime = tz.TZDateTime(tz.local, now.year, now.month, now.day, hour, minute);
+      // If already past today, schedule for tomorrow
+      if (scheduledTime.isBefore(now)) {
+        scheduledTime = scheduledTime.add(const Duration(days: 1));
+      }
 
       await _notificationsPlugin.zonedSchedule(
         i,
         '💧 Time to Hydrate!',
-        'Remember to drink water regularly.',
+        _randomMessage(random),
         scheduledTime,
         const NotificationDetails(
           android: AndroidNotificationDetails(
@@ -65,18 +82,36 @@ class NotificationService {
             priority: Priority.high,
             playSound: true,
           ),
+          iOS: DarwinNotificationDetails(
+            presentAlert: true,
+            presentBadge: true,
+            presentSound: true,
+          ),
         ),
-        androidAllowWhileIdle: true,
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
         uiLocalNotificationDateInterpretation:
-        UILocalNotificationDateInterpretation.wallClockTime,
-        matchDateTimeComponents: DateTimeComponents.time, // repeat daily at same time
+            UILocalNotificationDateInterpretation.wallClockTime,
+        matchDateTimeComponents: DateTimeComponents.time,
       );
     }
+  }
+
+  static String _randomMessage(Random random) {
+    const messages = [
+      'Your body is 60% water — keep it topped up! 💧',
+      'Small sips, big difference. Drink up! 🥤',
+      'Hydration check! How\'s your water intake?',
+      'Stay focused, stay hydrated. Time for a glass!',
+      'Water break! Your future self will thank you.',
+      'Feeling tired? Water might be the fix 💧',
+      'Don\'t forget to drink water today!',
+      'Your plants need water. So do you 🌱',
+    ];
+    return messages[random.nextInt(messages.length)];
   }
 
   static Future<void> cancelAllNotifications() async {
     await _notificationsPlugin.cancelAll();
   }
-
 }
 
