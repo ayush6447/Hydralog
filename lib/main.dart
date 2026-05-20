@@ -15,8 +15,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
   await NotificationService.initialize();
-  await NotificationService.cancelAllNotifications();
-  await NotificationService.scheduleDailyRandomReminders();
+  await NotificationService.scheduleDailyReminders();
 
   // Force dark status bar icons (white text on dark bg)
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(

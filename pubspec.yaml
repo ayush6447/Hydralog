@@ -32,6 +32,7 @@ dependencies:
 
   # Health data — HealthKit (iOS) + Health Connect (Android)
   health: ^13.3.1
+  flutter_timezone: ^5.0.2
 
 dev_dependencies:
   flutter_launcher_icons: ^0.13.1

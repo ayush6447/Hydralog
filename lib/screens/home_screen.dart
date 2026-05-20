@@ -177,25 +177,29 @@ class HomeScreen extends StatelessWidget {
               ),
               const SizedBox(height: 12),
 
-              // Custom amount button
-              TextButton.icon(
-                onPressed: () => _showCustomAmountDialog(context, provider),
-                icon: const Icon(Icons.edit, size: 16),
-                label: const Text('Custom amount'),
-                style: TextButton.styleFrom(foregroundColor: Colors.white54),
+              // Additional actions
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  TextButton.icon(
+                    onPressed: () => _showCustomAmountDialog(context, provider),
+                    icon: const Icon(Icons.edit, size: 16),
+                    label: const Text('Custom'),
+                    style: TextButton.styleFrom(foregroundColor: Colors.white54),
+                  ),
+                  const SizedBox(width: 16),
+                  OutlinedButton.icon(
+                    onPressed: () => _showRemoveDialog(context, provider),
+                    icon: const Icon(Icons.remove, size: 16),
+                    label: const Text('Remove'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.redAccent,
+                      side: const BorderSide(color: Colors.redAccent),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 16),
-
-              // Remove button
-              OutlinedButton.icon(
-                onPressed: () => _showRemoveDialog(context, provider),
-                icon: const Icon(Icons.remove),
-                label: const Text('Remove Water'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.redAccent,
-                  side: const BorderSide(color: Colors.redAccent),
-                ),
-              ),
               const SizedBox(height: 20),
             ],
           ),

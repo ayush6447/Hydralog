@@ -7,6 +7,7 @@ import '../models/health_data.dart';
 import '../models/user_profile.dart';
 import '../services/firebase_service.dart';
 import '../services/health_service.dart';
+import '../services/notification_service.dart';
 
 class WaterProvider extends ChangeNotifier {
   int _currentIntake = 0;
@@ -151,15 +152,24 @@ class WaterProvider extends ChangeNotifier {
     notifyListeners();
     _saveLocal();
     _pushWaterToFirebase();
+    // Cancel reminders once goal is met
+    if (_currentIntake >= _goal) {
+      NotificationService.cancelAllNotifications();
+    }
   }
 
   void removeWater(int amount) {
+    final wasGoalMet = _currentIntake >= _goal;
     _currentIntake = (_currentIntake - amount).clamp(0, _goal * 2);
     final current = _historyMap[todayKey] ?? 0;
     _historyMap[todayKey] = (current - amount).clamp(0, _goal * 2);
     notifyListeners();
     _saveLocal();
     _pushWaterToFirebase();
+    // Re-schedule reminders if we dipped below goal
+    if (wasGoalMet && _currentIntake < _goal) {
+      NotificationService.scheduleDailyReminders();
+    }
   }
 
   void setGoal(int goalMl) {

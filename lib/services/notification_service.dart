@@ -3,6 +3,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:permission_handler/permission_handler.dart';
+import 'package:flutter_timezone/flutter_timezone.dart';
 
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _notificationsPlugin =
@@ -11,18 +12,19 @@ class NotificationService {
   // Waking hours window: 7 AM to 10 PM
   static const int _startHour = 7;
   static const int _endHour = 22;
+  static const int _notificationCount = 12;
 
   static Future<void> initialize() async {
     await _requestNotificationPermission();
 
     tzdata.initializeTimeZones();
 
-    // Use device local timezone instead of hardcoded India timezone
-    final String localTimeZoneName = DateTime.now().timeZoneName;
+    // Use flutter_timezone for reliable IANA timezone name (e.g. "Asia/Kolkata")
+    final timeZoneInfo = await FlutterTimezone.getLocalTimezone();
+    final String timeZoneName = timeZoneInfo.toString();
     try {
-      tz.setLocalLocation(tz.getLocation(localTimeZoneName));
+      tz.setLocalLocation(tz.getLocation(timeZoneName));
     } catch (_) {
-      // Fallback to UTC if timezone name can't be resolved
       tz.setLocalLocation(tz.UTC);
     }
 
@@ -44,17 +46,19 @@ class NotificationService {
     }
   }
 
-  /// Schedule 8 daily hydration reminders spread across waking hours (7 AM – 10 PM)
-  static Future<void> scheduleDailyRandomReminders() async {
+  /// Schedule 12 daily hydration reminders spread across waking hours (7 AM - 10 PM).
+  /// These run until the daily goal is completed, at which point [cancelAllNotifications] should be called.
+  static Future<void> scheduleDailyReminders() async {
+    // Cancel any existing ones first
+    await _notificationsPlugin.cancelAll();
+
     final now = tz.TZDateTime.now(tz.local);
     final random = Random();
 
-    const int notificationCount = 8;
     final int totalMinutes = (_endHour - _startHour) * 60;
-    final int windowPerSlot = totalMinutes ~/ notificationCount;
+    final int windowPerSlot = totalMinutes ~/ _notificationCount;
 
-    for (int i = 0; i < notificationCount; i++) {
-      // Each reminder gets its own time slot to spread them evenly
+    for (int i = 0; i < _notificationCount; i++) {
       final int slotStart = _startHour * 60 + i * windowPerSlot;
       final int randomOffset = random.nextInt(windowPerSlot);
       final int totalMinute = slotStart + randomOffset;
@@ -70,7 +74,7 @@ class NotificationService {
 
       await _notificationsPlugin.zonedSchedule(
         i,
-        '💧 Time to Hydrate!',
+        'Hydration Reminder',
         _randomMessage(random),
         scheduledTime,
         const NotificationDetails(
@@ -91,27 +95,33 @@ class NotificationService {
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.wallClockTime,
-        matchDateTimeComponents: DateTimeComponents.time,
       );
     }
   }
 
   static String _randomMessage(Random random) {
     const messages = [
-      'Your body is 60% water — keep it topped up! 💧',
-      'Small sips, big difference. Drink up! 🥤',
-      'Hydration check! How\'s your water intake?',
-      'Stay focused, stay hydrated. Time for a glass!',
-      'Water break! Your future self will thank you.',
-      'Feeling tired? Water might be the fix 💧',
-      'Don\'t forget to drink water today!',
-      'Your plants need water. So do you 🌱',
+      'A glass of water now keeps fatigue away. You got this.',
+      'Your body is working hard for you. Return the favour with some water.',
+      'Small sips add up to big results. Take one now.',
+      'Staying hydrated sharpens your focus. Pour yourself a glass.',
+      'Water fuels every cell in your body. Keep the engine running.',
+      'Dehydration slows you down. A quick drink puts you back on track.',
+      'Think of water as liquid motivation. Time for a refill.',
+      'The best investment in yourself today costs nothing. Drink water.',
+      'Champions stay hydrated. You are no exception.',
+      'Progress is built one glass at a time. Add another.',
+      'Your mind works better when hydrated. Give it what it needs.',
+      'Consistency wins. Another glass, another step toward your goal.',
+      'Great things start with simple habits. Drink up.',
+      'You are closer to your goal than you think. Keep sipping.',
+      'Water is the simplest upgrade you can give yourself right now.',
     ];
     return messages[random.nextInt(messages.length)];
   }
 
+  /// Call this when the user reaches their daily water goal to stop further reminders.
   static Future<void> cancelAllNotifications() async {
     await _notificationsPlugin.cancelAll();
   }
 }
-

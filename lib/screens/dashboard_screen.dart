@@ -338,7 +338,56 @@ class _SummaryRingCardState extends State<_SummaryRingCard> {
               ),
             ],
           ),
+          const SizedBox(height: 12),
+
+          // Remove water button
+          Center(
+            child: GestureDetector(
+              onTap: _showRemoveDialog,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.redAccent.withOpacity(0.5)),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.remove_circle_outline, color: Colors.redAccent, size: 16),
+                    SizedBox(width: 6),
+                    Text('Remove water',
+                        style: TextStyle(
+                            color: Colors.redAccent,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500)),
+                  ],
+                ),
+              ),
+            ),
+          ),
         ],
+      ),
+    );
+  }
+
+  Future<void> _showRemoveDialog() async {
+    await showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF1C1C1E),
+        title: const Text('Remove Water',
+            style: TextStyle(color: Colors.white)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [250, 500, 750].map((ml) => ListTile(
+            leading: const Icon(Icons.remove_circle_outline, color: Colors.redAccent),
+            title: Text('$ml ml', style: const TextStyle(color: Colors.white)),
+            onTap: () {
+              widget.provider.removeWater(ml);
+              Navigator.pop(context);
+            },
+          )).toList(),
+        ),
       ),
     );
   }
