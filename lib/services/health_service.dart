@@ -24,9 +24,16 @@ class HealthService {
     final types = Platform.isIOS ? _iosTypes : _androidTypes;
     final permissions = types.map((_) => HealthDataAccess.READ).toList();
     try {
+      if (Platform.isAndroid) {
+        _health.configure();
+      }
+      bool? hasPerms = await _health.hasPermissions(types, permissions: permissions);
+      if (hasPerms == true) return true;
+      
       return await _health.requestAuthorization(types,
           permissions: permissions);
-    } catch (_) {
+    } catch (e) {
+      print("Health permission error: $e");
       return false;
     }
   }
@@ -39,11 +46,18 @@ class HealthService {
 
     try {
       final types = Platform.isIOS ? _iosTypes : _androidTypes;
+      if (Platform.isAndroid) {
+        _health.configure();
+      }
       final points = await _health.getHealthDataFromTypes(
         startTime: start,
         endTime: end,
         types: types,
       );
+      print('DEBUG: Fetched ${points.length} points from Health Connect');
+      for (final p in points) {
+        print('DEBUG: Point type: ${p.type}, value: ${p.value}, source: ${p.sourceName}');
+      }
 
       int steps = 0;
       double calories = 0;

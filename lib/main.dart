@@ -62,7 +62,7 @@ class HydralogApp extends StatelessWidget {
           elevation: 0,
         ),
         // Dialogs
-        dialogTheme: const DialogTheme(
+        dialogTheme: const DialogThemeData(
           backgroundColor: Color(0xFF1C1C1E),
           titleTextStyle: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w600),
         ),

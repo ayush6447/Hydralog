@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "194193249655-5he7ileqkbh1nb085t81c797ujrc93ti.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.hydralog",
+            "certificate_hash": "643050d99848472f6e7707d20a79608e531c3605"
+          }
+        },
+        {
           "client_id": "194193249655-vjh18b4arj3ke51m9kuml2bav9d4j3jf.apps.googleusercontent.com",
           "client_type": 3
         }
@@ -29,6 +37,13 @@
             {
               "client_id": "194193249655-vjh18b4arj3ke51m9kuml2bav9d4j3jf.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "194193249655-0qu6dfj0h5opjinmfjtrarsc2v2qkm3a.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.hydralog"
+              }
             }
           ]
         }
