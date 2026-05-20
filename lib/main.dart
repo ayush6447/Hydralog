@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'providers/water_provider.dart';
 import 'screens/dashboard_screen.dart';
@@ -16,6 +17,14 @@ void main() async {
   await NotificationService.initialize();
   await NotificationService.cancelAllNotifications();
   await NotificationService.scheduleDailyRandomReminders();
+
+  // Force dark status bar icons (white text on dark bg)
+  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+    statusBarBrightness: Brightness.dark,
+    statusBarIconBrightness: Brightness.light,
+    systemNavigationBarColor: Color(0xFF000000),
+    systemNavigationBarIconBrightness: Brightness.light,
+  ));
 
   runApp(
     ChangeNotifierProvider(
@@ -33,26 +42,42 @@ class HydralogApp extends StatelessWidget {
     return MaterialApp(
       title: 'Hydralog',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData.dark().copyWith(
-        scaffoldBackgroundColor: const Color(0xFF121212),
+      theme: ThemeData(
+        brightness: Brightness.dark,
+        scaffoldBackgroundColor: Colors.black,
         colorScheme: const ColorScheme.dark(
-          primary: Colors.cyanAccent,
-          secondary: Colors.tealAccent,
+          primary: Color(0xFF64D2FF),
+          secondary: Color(0xFF30D158),
+          surface: Color(0xFF1C1C1E),
+          background: Colors.black,
         ),
-        dialogBackgroundColor: const Color(0xFF1E1E1E),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.tealAccent,
-            foregroundColor: Colors.black,
-          ),
+        // Bottom nav
+        bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+          backgroundColor: Color(0xFF1C1C1E),
+          selectedItemColor: Color(0xFF64D2FF),
+          unselectedItemColor: Color(0xFF636366),
+          type: BottomNavigationBarType.fixed,
+          selectedLabelStyle: TextStyle(fontSize: 10, fontWeight: FontWeight.w500),
+          unselectedLabelStyle: TextStyle(fontSize: 10),
+          elevation: 0,
         ),
+        // Dialogs
+        dialogTheme: const DialogTheme(
+          backgroundColor: Color(0xFF1C1C1E),
+          titleTextStyle: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w600),
+        ),
+        // Text
+        textTheme: const TextTheme(
+          bodyMedium: TextStyle(color: Colors.white),
+        ),
+        fontFamily: '.SF Pro Display',
+        useMaterial3: true,
       ),
       home: const _AuthGate(),
     );
   }
 }
 
-/// Listens to Firebase auth state and shows Login or Home accordingly
 class _AuthGate extends StatelessWidget {
   const _AuthGate();
 
@@ -63,15 +88,16 @@ class _AuthGate extends StatelessWidget {
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
+            backgroundColor: Colors.black,
             body: Center(
-              child: CircularProgressIndicator(color: Colors.cyanAccent),
+              child: CircularProgressIndicator(
+                  color: Color(0xFF64D2FF), strokeWidth: 2),
             ),
           );
         }
         final user = snapshot.data;
         if (user == null) return const LoginScreen();
 
-        // User is signed in — boot data load
         WidgetsBinding.instance.addPostFrameCallback((_) {
           context.read<WaterProvider>().loadData(isSignedIn: true);
         });
@@ -97,70 +123,61 @@ class _HydralogHomeState extends State<HydralogHome> {
     ProfileScreen(),
   ];
 
-  static const _titles = ['Hydralog', 'History', 'Profile'];
-
   @override
   Widget build(BuildContext context) {
     return Consumer<WaterProvider>(
       builder: (context, provider, _) {
         if (!provider.isLoaded) {
           return const Scaffold(
+            backgroundColor: Colors.black,
             body: Center(
-              child: CircularProgressIndicator(color: Colors.cyanAccent),
+              child: CircularProgressIndicator(
+                  color: Color(0xFF64D2FF), strokeWidth: 2),
             ),
           );
         }
         return Scaffold(
-          appBar: AppBar(
-            backgroundColor: Colors.black,
-            elevation: 0,
-            title: Text(
-              _titles[_selectedIndex],
-              style: const TextStyle(
-                color: Colors.cyanAccent,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.2,
+          backgroundColor: Colors.black,
+          body: SafeArea(
+            bottom: false,
+            child: IndexedStack(index: _selectedIndex, children: _screens),
+          ),
+          bottomNavigationBar: Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFF1C1C1E),
+              border: Border(
+                top: BorderSide(
+                    color: Colors.white.withOpacity(0.08), width: 0.5),
               ),
             ),
-            actions: [
-              // User avatar
-              Padding(
-                padding: const EdgeInsets.only(right: 12),
-                child: GestureDetector(
-                  onTap: () => setState(() => _selectedIndex = 2),
-                  child: CircleAvatar(
-                    radius: 16,
-                    backgroundColor: Colors.cyanAccent.withOpacity(0.2),
-                    child: Text(
-                      AuthService.currentUser?.displayName
-                              ?.substring(0, 1)
-                              .toUpperCase() ??
-                          '?',
-                      style: const TextStyle(
-                          color: Colors.cyanAccent,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14),
-                    ),
+            child: SafeArea(
+              top: false,
+              child: BottomNavigationBar(
+                currentIndex: _selectedIndex,
+                onTap: (i) => setState(() => _selectedIndex = i),
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                selectedItemColor: const Color(0xFF64D2FF),
+                unselectedItemColor: const Color(0xFF636366),
+                items: const [
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.heart_broken_outlined),
+                    activeIcon: Icon(Icons.favorite_rounded),
+                    label: 'Summary',
                   ),
-                ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.calendar_month_outlined),
+                    activeIcon: Icon(Icons.calendar_month_rounded),
+                    label: 'History',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.person_outline_rounded),
+                    activeIcon: Icon(Icons.person_rounded),
+                    label: 'Profile',
+                  ),
+                ],
               ),
-            ],
-          ),
-          body: IndexedStack(index: _selectedIndex, children: _screens),
-          bottomNavigationBar: BottomNavigationBar(
-            backgroundColor: Colors.black,
-            selectedItemColor: Colors.cyanAccent,
-            unselectedItemColor: Colors.white38,
-            currentIndex: _selectedIndex,
-            onTap: (i) => setState(() => _selectedIndex = i),
-            items: const [
-              BottomNavigationBarItem(
-                  icon: Icon(Icons.dashboard_outlined), label: 'Dashboard'),
-              BottomNavigationBarItem(
-                  icon: Icon(Icons.calendar_today), label: 'History'),
-              BottomNavigationBarItem(
-                  icon: Icon(Icons.person), label: 'Profile'),
-            ],
+            ),
           ),
         );
       },

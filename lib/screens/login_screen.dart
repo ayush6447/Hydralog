@@ -27,63 +27,116 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF121212),
+      backgroundColor: Colors.black,
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 36),
+          padding: const EdgeInsets.symmetric(horizontal: 32),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(Icons.water_drop, size: 72, color: Colors.cyanAccent),
-              const SizedBox(height: 20),
+              const SizedBox(height: 60),
+
+              // App icon
+              Container(
+                width: 72,
+                height: 72,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF64D2FF).withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: const Icon(Icons.water_drop_rounded,
+                    color: Color(0xFF64D2FF), size: 38),
+              ),
+              const SizedBox(height: 28),
+
               const Text(
                 'Hydralog',
                 style: TextStyle(
-                  fontSize: 36,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.cyanAccent,
-                  letterSpacing: 2,
+                  fontSize: 34,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                  letterSpacing: -0.5,
                 ),
               ),
-              const SizedBox(height: 10),
-              const Text(
-                'Track your health across all devices',
-                style: TextStyle(color: Colors.white54, fontSize: 15),
-                textAlign: TextAlign.center,
+              const SizedBox(height: 8),
+              Text(
+                'Your personal health dashboard,\nsynced across all your devices.',
+                style: TextStyle(
+                  fontSize: 17,
+                  color: Colors.white.withOpacity(0.5),
+                  height: 1.4,
+                ),
               ),
-              const SizedBox(height: 60),
-              // Feature list
-              _featureRow(Icons.water_drop_outlined, 'Water intake synced live'),
-              _featureRow(Icons.directions_walk, 'Steps from iPhone & Samsung'),
-              _featureRow(Icons.local_fire_department_outlined, 'Calories & sleep tracking'),
-              _featureRow(Icons.phone_android, 'Screen time (Samsung)'),
-              const SizedBox(height: 60),
+
+              const SizedBox(height: 48),
+
+              // Feature rows
+              _featureRow(
+                Icons.water_drop_rounded,
+                'Water intake',
+                'Log and sync in real time',
+                const Color(0xFF64D2FF),
+              ),
+              _featureRow(
+                Icons.directions_walk_rounded,
+                'Steps',
+                'From iPhone and Samsung',
+                const Color(0xFFFF9F0A),
+              ),
+              _featureRow(
+                Icons.local_fire_department_rounded,
+                'Calories & sleep',
+                'From Apple Health or Health Connect',
+                const Color(0xFFFF375F),
+              ),
+              _featureRow(
+                Icons.phone_android_rounded,
+                'Screen time',
+                'Samsung only',
+                const Color(0xFF5E5CE6),
+              ),
+
+              const Spacer(),
+
+              // Sign in button
               if (_loading)
-                const CircularProgressIndicator(color: Colors.cyanAccent)
+                const Center(
+                  child: CircularProgressIndicator(color: Color(0xFF64D2FF)),
+                )
               else
                 SizedBox(
                   width: double.infinity,
-                  child: ElevatedButton.icon(
+                  child: FilledButton(
                     onPressed: _signIn,
-                    icon: const Icon(Icons.login, color: Colors.black),
-                    label: const Text(
-                      'Continue with Google',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.cyanAccent,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.white,
                       foregroundColor: Colors.black,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
+                          borderRadius: BorderRadius.circular(14)),
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.login_rounded, size: 20),
+                        SizedBox(width: 10),
+                        Text('Continue with Google',
+                            style: TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.w600)),
+                      ],
                     ),
                   ),
                 ),
+
               if (_error != null) ...[
-                const SizedBox(height: 16),
-                Text(_error!, style: const TextStyle(color: Colors.redAccent, fontSize: 13)),
+                const SizedBox(height: 12),
+                Center(
+                  child: Text(_error!,
+                      style: const TextStyle(
+                          color: Color(0xFFFF375F), fontSize: 13)),
+                ),
               ],
+              const SizedBox(height: 40),
             ],
           ),
         ),
@@ -91,14 +144,35 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _featureRow(IconData icon, String text) {
+  Widget _featureRow(
+      IconData icon, String title, String subtitle, Color color) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 12),
       child: Row(
         children: [
-          Icon(icon, color: Colors.tealAccent, size: 20),
-          const SizedBox(width: 14),
-          Text(text, style: const TextStyle(color: Colors.white70, fontSize: 15)),
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(11),
+            ),
+            child: Icon(icon, color: color, size: 22),
+          ),
+          const SizedBox(width: 16),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title,
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500)),
+              Text(subtitle,
+                  style: TextStyle(
+                      color: Colors.white.withOpacity(0.4), fontSize: 13)),
+            ],
+          ),
         ],
       ),
     );
