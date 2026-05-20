@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "194193249655",
+    "project_id": "hydralog-793fb",
+    "storage_bucket": "hydralog-793fb.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:194193249655:android:26367bb1d05dd62a497d72",
+        "android_client_info": {
+          "package_name": "com.example.hydralog"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "194193249655-vjh18b4arj3ke51m9kuml2bav9d4j3jf.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCCTQ2huWh1taxUFAiq-ukYjm5XFykXOBk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "194193249655-vjh18b4arj3ke51m9kuml2bav9d4j3jf.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,8 +1,8 @@
 name: hydralog
-description: "A daily hydration tracker."
+description: "Track water, steps, calories, sleep and screen time across iPhone and Samsung."
 publish_to: 'none'
 
-version: 1.1.0+2
+version: 2.0.0+3
 
 environment:
   sdk: ^3.7.2
@@ -10,13 +10,28 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+
+  # State & storage
   shared_preferences: ^2.2.2
+  provider: ^6.1.2
+
+  # UI & utils
   intl: ^0.17.0
+  cupertino_icons: ^1.0.8
+
+  # Notifications
   flutter_local_notifications: ^17.1.0
   permission_handler: ^11.3.1
   timezone: ^0.9.2
-  provider: ^6.1.2
-  cupertino_icons: ^1.0.8
+
+  # Firebase
+  firebase_core: ^3.6.0
+  firebase_auth: ^5.3.1
+  cloud_firestore: ^5.4.4
+  google_sign_in: ^6.2.1
+
+  # Health data — HealthKit (iOS) + Health Connect (Android)
+  health: ^10.2.0
 
 dev_dependencies:
   flutter_launcher_icons: ^0.13.1
@@ -29,8 +44,9 @@ flutter:
     - family: Orbitron
       fonts:
         - asset: fonts/Orbitron-Regular.ttf
-
   uses-material-design: true
+  assets:
+    - assets/
 
 flutter_icons:
   android: true
