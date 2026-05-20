@@ -3,6 +3,8 @@
     <!-- Notifications -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+
 
     <!-- Screen time via UsageStats -->
     <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS"
@@ -12,15 +14,20 @@
     <!-- Health Connect permissions -->
     <uses-permission android:name="android.permission.health.READ_STEPS"/>
     <uses-permission android:name="android.permission.health.READ_ACTIVE_CALORIES_BURNED"/>
+    <uses-permission android:name="android.permission.health.READ_TOTAL_CALORIES_BURNED"/>
     <uses-permission android:name="android.permission.health.READ_SLEEP"/>
     <uses-permission android:name="android.permission.health.READ_HYDRATION"/>
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION"/>
     <uses-permission android:name="android.permission.health.WRITE_HYDRATION"/>
 
     <!-- Internet for Firebase -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    
+    <!-- Required to query intents for third-party apps for Digital Wellbeing screen time -->
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"/>
 
     <application
-        android:label="Hydralog"
+        android:label="FlowTrack"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
 

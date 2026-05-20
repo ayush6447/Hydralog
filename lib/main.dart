@@ -8,14 +8,13 @@ import 'screens/dashboard_screen.dart';
 import 'screens/history_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/profile_screen.dart';
+import 'screens/splash_screen.dart';
 import 'services/auth_service.dart';
 import 'services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
-  await NotificationService.initialize();
-  await NotificationService.scheduleDailyReminders();
 
   // Force dark status bar icons (white text on dark bg)
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
@@ -28,18 +27,18 @@ void main() async {
   runApp(
     ChangeNotifierProvider(
       create: (_) => WaterProvider(),
-      child: const HydralogApp(),
+      child: const FlowTrackApp(),
     ),
   );
 }
 
-class HydralogApp extends StatelessWidget {
-  const HydralogApp({super.key});
+class FlowTrackApp extends StatelessWidget {
+  const FlowTrackApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Hydralog',
+      title: 'FlowTrack',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         brightness: Brightness.dark,
@@ -72,13 +71,13 @@ class HydralogApp extends StatelessWidget {
         fontFamily: '.SF Pro Display',
         useMaterial3: true,
       ),
-      home: const _AuthGate(),
+      home: const SplashScreen(nextScreen: AuthGate()),
     );
   }
 }
 
-class _AuthGate extends StatelessWidget {
-  const _AuthGate();
+class AuthGate extends StatelessWidget {
+  const AuthGate({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -100,20 +99,20 @@ class _AuthGate extends StatelessWidget {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           context.read<WaterProvider>().loadData(isSignedIn: true);
         });
-        return const HydralogHome();
+        return const FlowTrackHome();
       },
     );
   }
 }
 
-class HydralogHome extends StatefulWidget {
-  const HydralogHome({super.key});
+class FlowTrackHome extends StatefulWidget {
+  const FlowTrackHome({super.key});
 
   @override
-  State<HydralogHome> createState() => _HydralogHomeState();
+  State<FlowTrackHome> createState() => _FlowTrackHomeState();
 }
 
-class _HydralogHomeState extends State<HydralogHome> {
+class _FlowTrackHomeState extends State<FlowTrackHome> {
   int _selectedIndex = 0;
 
   static const _screens = [
@@ -121,6 +120,24 @@ class _HydralogHomeState extends State<HydralogHome> {
     HistoryScreen(),
     ProfileScreen(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _initNotifications();
+  }
+
+  Future<void> _initNotifications() async {
+    final success = await NotificationService.initialize();
+    if (success) {
+      await NotificationService.scheduleDailyReminders();
+      // Debug: log pending count
+      final pending = await NotificationService.getPendingNotifications();
+      debugPrint('[FlowTrack] ${pending.length} notifications pending');
+    } else {
+      debugPrint('[FlowTrack] ⚠ Notification init failed – check logs');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

@@ -71,11 +71,24 @@ class MainActivity : FlutterFragmentActivity() {
             UsageStatsManager.INTERVAL_DAILY, startTime, endTime
         )
 
-        // Sum all foreground time across all apps, excluding system/self
-        val totalMs = stats
-            .filter { it.packageName != packageName }
-            .sumOf { it.totalTimeInForeground }
+        var totalMs = 0L
+        for (it in stats) {
+            val isUser = isUserApp(this, it.packageName)
+            if (it.totalTimeInForeground > 1000 && isUser) {
+                totalMs += it.totalTimeInForeground
+                android.util.Log.d("HydralogScreenTime", "Included App: ${it.packageName}, Time: ${it.totalTimeInForeground / 1000 / 60}m")
+            } else if (it.totalTimeInForeground > 1000) {
+                android.util.Log.d("HydralogScreenTime", "Filtered System App: ${it.packageName}, Time: ${it.totalTimeInForeground / 1000 / 60}m")
+            }
+        }
 
+        android.util.Log.d("HydralogScreenTime", "Total Minutes Calculated: ${totalMs / 1000 / 60}")
         return (totalMs / 1000 / 60).toInt()  // ms → minutes
+    }
+
+    private fun isUserApp(context: Context, pkg: String): Boolean {
+        if (pkg == context.packageName) return false
+        val intent = context.packageManager.getLaunchIntentForPackage(pkg)
+        return intent != null
     }
 }

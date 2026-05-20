@@ -41,16 +41,26 @@ class _LoginScreenState extends State<LoginScreen> {
                 width: 72,
                 height: 72,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF64D2FF).withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(18),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF64D2FF).withOpacity(0.15),
+                      blurRadius: 15,
+                      spreadRadius: 2,
+                    )
+                  ],
                 ),
-                child: const Icon(Icons.water_drop_rounded,
-                    color: Color(0xFF64D2FF), size: 38),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(18),
+                  child: Image.asset(
+                    'assets/new-logo.png',
+                    fit: BoxFit.cover,
+                  ),
+                ),
               ),
               const SizedBox(height: 28),
 
               const Text(
-                'Hydralog',
+                'FlowTrack',
                 style: TextStyle(
                   fontSize: 34,
                   fontWeight: FontWeight.w700,

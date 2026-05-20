@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../models/user_profile.dart';
 import '../providers/water_provider.dart';
 import '../services/auth_service.dart';
+import '../services/notification_service.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -193,6 +194,14 @@ class ProfileScreen extends StatelessWidget {
                         'Set daily goal',
                         const Color(0xFF30D158),
                         () => _showGoalDialog(context, provider),
+                      ),
+                      _divider(),
+                      _actionRow(
+                        context,
+                        Icons.notifications_active_rounded,
+                        'Test notification',
+                        const Color(0xFF5E5CE6),
+                        () => _triggerTestNotification(context),
                       ),
                       _divider(),
                       _actionRow(
@@ -515,5 +524,37 @@ class ProfileScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  void _triggerTestNotification(BuildContext context) async {
+    try {
+      // Gather diagnostics
+      final permStatus = await NotificationService.getPermissionStatus();
+      final pending = await NotificationService.getPendingNotifications();
+
+      // Send the instant notification
+      await NotificationService.sendInstantNotification();
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                '✅ Notification sent! Permission: $permStatus | Pending: ${pending.length}'),
+            backgroundColor: const Color(0xFF30D158),
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Failed: $e'),
+            backgroundColor: const Color(0xFFFF375F),
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    }
   }
 }
