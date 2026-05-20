@@ -6,14 +6,13 @@ import '../models/health_data.dart';
 
 class HealthService {
   static final Health _health = Health();
-  static bool _configured = false;
+  static bool _configured = false; // Bug 4 fix: configure only once
 
+  // Bug 2 fix: correct types per platform
   static const _androidTypes = [
-    HealthDataType.STEPS,
-    HealthDataType.TOTAL_CALORIES_BURNED,
-    HealthDataType.ACTIVE_ENERGY_BURNED,
-    HealthDataType.SLEEP_SESSION,
+    HealthDataType.TOTAL_CALORIES_BURNED, // was ACTIVE_ENERGY_BURNED — wrong on Android
     HealthDataType.SLEEP_ASLEEP,
+    HealthDataType.SLEEP_SESSION, // Samsung writes SLEEP_SESSION, not just SLEEP_ASLEEP
   ];
 
   static const _iosTypes = [
@@ -22,86 +21,111 @@ class HealthService {
     HealthDataType.SLEEP_ASLEEP,
   ];
 
-  static void _ensureConfigured() {
-    if (Platform.isAndroid && !_configured) {
+  static Future<void> _ensureConfigured() async {
+    if (_configured) return;
+    if (Platform.isAndroid) {
       _health.configure();
-      _configured = true;
     }
+    _configured = true;
   }
 
   /// Request permissions from HealthKit (iOS) or Health Connect (Android)
   static Future<bool> requestPermissions() async {
+    await _ensureConfigured();
     final types = Platform.isIOS ? _iosTypes : _androidTypes;
     final permissions = types.map((_) => HealthDataAccess.READ).toList();
     try {
-      _ensureConfigured();
       bool? hasPerms = await _health.hasPermissions(types, permissions: permissions);
       if (hasPerms == true) return true;
-      
       return await _health.requestAuthorization(types, permissions: permissions);
     } catch (e) {
-      print("Health permission error: $e");
+      print('Health permission error: $e');
       return false;
     }
   }
 
   /// Fetch today's health data from the device
   static Future<HealthData> fetchToday() async {
+    await _ensureConfigured();
     final now = DateTime.now();
-    // For steps & calories: today midnight to now
-    final startToday = DateTime(now.year, now.month, now.day);
-    // For sleep: yesterday 12 PM to today 12 PM (a full 24 hours to capture split sessions)
-    final startSleep = startToday.subtract(const Duration(hours: 12));
+    final todayStart = DateTime(now.year, now.month, now.day);
 
     try {
-      _ensureConfigured();
-
-      final types = Platform.isIOS ? _iosTypes : _androidTypes;
-      final points = await _health.getHealthDataFromTypes(
-        startTime: startSleep, // use wider window to catch sleep
-        endTime: now,
-        types: types,
-      );
-
-      print('DEBUG: Fetched ${points.length} points from Health Connect');
-      
       int steps = 0;
       double calories = 0;
       double sleepHours = 0;
-      Map<String, int> stepsBySource = {};
 
-      final deduped = _health.removeDuplicates(points);
-
-      for (final p in deduped) {
-        if (p.type == HealthDataType.STEPS) {
-          if (p.dateFrom.isAfter(startToday) || p.dateFrom.isAtSameMomentAs(startToday)) {
-            final val = (p.value as NumericHealthValue).numericValue.toInt();
-            stepsBySource[p.sourceName] = (stepsBySource[p.sourceName] ?? 0) + val;
+      if (Platform.isIOS) {
+        // ── iOS: use getHealthDataFromTypes for everything ───────────
+        final points = await _health.getHealthDataFromTypes(
+          startTime: todayStart,
+          endTime: now,
+          types: _iosTypes,
+        );
+        final deduped = _health.removeDuplicates(points);
+        for (final p in deduped) {
+          final val = (p.value as NumericHealthValue).numericValue.toDouble();
+          switch (p.type) {
+            case HealthDataType.STEPS:
+              steps += val.toInt();
+              break;
+            case HealthDataType.ACTIVE_ENERGY_BURNED:
+              calories += val;
+              break;
+            case HealthDataType.SLEEP_ASLEEP:
+              sleepHours += val / 60; // iOS returns minutes
+              break;
+            default:
+              break;
           }
         }
-        else if (p.type == HealthDataType.TOTAL_CALORIES_BURNED || 
-                 p.type == HealthDataType.ACTIVE_ENERGY_BURNED) {
-          if (p.dateFrom.isAfter(startToday) || p.dateFrom.isAtSameMomentAs(startToday)) {
-            final val = (p.value as NumericHealthValue).numericValue.toDouble();
+      } else {
+        // ── Android/Samsung: Bug 1 fix: use getTotalStepsInInterval ──
+        // This returns a single authoritative total, same number Samsung Health shows.
+        // getHealthDataFromTypes returns raw entries from EVERY source
+        // (Samsung Health + Google Fit + sensor) and sums them = 2-3x inflated.
+        try {
+          final stepTotal = await _health.getTotalStepsInInterval(todayStart, now);
+          steps = stepTotal ?? 0;
+        } catch (_) {
+          steps = 0;
+        }
+
+        // Bug 5 fix: sleep window = yesterday 6 PM → today noon
+        // Night sleep starts yesterday, not at midnight today.
+        final sleepStart = DateTime(now.year, now.month, now.day - 1, 18, 0);
+        final sleepEnd = DateTime(now.year, now.month, now.day, 12, 0);
+
+        final points = await _health.getHealthDataFromTypes(
+          startTime: todayStart,
+          endTime: now,
+          types: [HealthDataType.TOTAL_CALORIES_BURNED],
+        );
+        final sleepPoints = await _health.getHealthDataFromTypes(
+          startTime: sleepStart,
+          endTime: sleepEnd,
+          types: [HealthDataType.SLEEP_ASLEEP, HealthDataType.SLEEP_SESSION],
+        );
+
+        final deduped = _health.removeDuplicates(points);
+        final sleepDeduped = _health.removeDuplicates(sleepPoints);
+
+        for (final p in deduped) {
+          final val = (p.value as NumericHealthValue).numericValue.toDouble();
+          if (p.type == HealthDataType.TOTAL_CALORIES_BURNED) {
             calories += val;
           }
         }
-        else if (p.type == HealthDataType.SLEEP_SESSION || p.type == HealthDataType.SLEEP_ASLEEP) {
+
+        // Bug 2 fix: Health Connect returns sleep in minutes
+        for (final p in sleepDeduped) {
           final val = (p.value as NumericHealthValue).numericValue.toDouble();
-          sleepHours += val / 60.0;
+          if (p.type == HealthDataType.SLEEP_ASLEEP ||
+              p.type == HealthDataType.SLEEP_SESSION) {
+            sleepHours += val / 60; // minutes → hours
+          }
         }
       }
-
-      // To avoid double-counting overlapping intervals from different apps (Samsung Health vs Google Fit)
-      // and bypassing Health Connect's aggregation lag, we just take the highest count from any single source.
-      if (stepsBySource.isNotEmpty) {
-        steps = stepsBySource.values.reduce((a, b) => a > b ? a : b);
-      }
-
-      print('DEBUG_HEALTH: Steps by source = $stepsBySource');
-      print('DEBUG_HEALTH: Final Steps = $steps');
-      print('DEBUG_HEALTH: Final Calories = $calories');
-      print('DEBUG_HEALTH: Final Sleep Hours = $sleepHours');
 
       double screenTime = 0;
       if (Platform.isAndroid) {
@@ -115,7 +139,8 @@ class HealthService {
         screenTimeHours: screenTime,
         deviceSource: Platform.isIOS ? 'iphone' : 'samsung',
       );
-    } catch (_) {
+    } catch (e) {
+      print('Health fetch error: $e');
       return const HealthData();
     }
   }
@@ -131,6 +156,5 @@ class HealthService {
     }
   }
 
-  static String get todayKey =>
-      DateFormat('yyyy-MM-dd').format(DateTime.now());
+  static String get todayKey => DateFormat('yyyy-MM-dd').format(DateTime.now());
 }

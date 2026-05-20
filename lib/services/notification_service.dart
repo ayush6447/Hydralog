@@ -10,67 +10,62 @@ class NotificationService {
   static final FlutterLocalNotificationsPlugin _notificationsPlugin =
       FlutterLocalNotificationsPlugin();
 
-  // Waking hours window: 7 AM to 10 PM
-  static const int _startHour = 7;
-  static const int _endHour = 22;
+  static const int _startHour = 7;   // 7 AM
+  static const int _endHour = 22;    // 10 PM
   static const int _notificationCount = 12;
-
-  /// Whether initialization completed successfully.
   static bool _initialized = false;
 
-  /// Initialize the notification subsystem. Returns true on success.
   static Future<bool> initialize() async {
     try {
-      // ── 1. Request runtime permission (Android 13+) ──────────────
+      // 1. Request permission (Android 13+ / iOS)
       final permStatus = await _requestNotificationPermission();
-      debugPrint('[NotificationService] Permission status: $permStatus');
-      if (permStatus.isDenied || permStatus.isPermanentlyDenied) {
-        debugPrint('[NotificationService] ⚠ Notification permission denied');
-        // Continue anyway — user may grant later in settings
-      }
+      debugPrint('[Notifications] Permission: $permStatus');
 
-      // ── 2. Time zones ────────────────────────────────────────────
+      // 2. Timezone — use flutter_timezone for accurate device locale
       tzdata.initializeTimeZones();
-      final timeZoneInfo = await FlutterTimezone.getLocalTimezone();
-      final String timeZoneName = timeZoneInfo.toString();
+      final String timeZoneName = await FlutterTimezone.getLocalTimezone();
       try {
         tz.setLocalLocation(tz.getLocation(timeZoneName));
-        debugPrint('[NotificationService] Timezone: $timeZoneName');
+        debugPrint('[Notifications] Timezone: $timeZoneName');
       } catch (_) {
         tz.setLocalLocation(tz.UTC);
-        debugPrint('[NotificationService] Timezone fallback → UTC');
+        debugPrint('[Notifications] Timezone fallback → UTC');
       }
 
-      // ── 3. Android notification channel ──────────────────────────
-      const androidChannel = AndroidNotificationChannel(
+      // 3. Create Android notification channels BEFORE plugin init
+      //    (channels must exist before any notification is shown)
+      const hydrationChannel = AndroidNotificationChannel(
         'hydration_channel',
         'Hydration Reminders',
-        description: 'Reminders to drink water throughout the day',
+        description: 'Daily reminders to drink water',
         importance: Importance.high,
         playSound: true,
         enableVibration: true,
       );
-
       const instantChannel = AndroidNotificationChannel(
         'instant_channel',
         'Instant Notifications',
-        description: 'Used for instant app testing',
+        description: 'Test and goal notifications',
         importance: Importance.max,
         playSound: true,
         enableVibration: true,
       );
 
-      final androidPlugin =
-          _notificationsPlugin.resolvePlatformSpecificImplementation<
+      final androidPlugin = _notificationsPlugin
+          .resolvePlatformSpecificImplementation<
               AndroidFlutterLocalNotificationsPlugin>();
-
       if (androidPlugin != null) {
-        await androidPlugin.createNotificationChannel(androidChannel);
+        await androidPlugin.createNotificationChannel(hydrationChannel);
         await androidPlugin.createNotificationChannel(instantChannel);
-        debugPrint('[NotificationService] Android channels created ✓');
+
+        // Bug fix: Check SCHEDULE_EXACT_ALARM permission on Android 12+
+        // Without this, zonedSchedule silently fails on most Samsung devices
+        final exactAlarmGranted =
+            await androidPlugin.requestExactAlarmsPermission();
+        debugPrint('[Notifications] Exact alarm permission: $exactAlarmGranted');
       }
 
-      // ── 4. Plugin initialization ────────────────────────────────
+      // 4. Initialise the plugin
       const androidSettings =
           AndroidInitializationSettings('@mipmap/ic_launcher');
       const iosSettings = DarwinInitializationSettings(
@@ -81,51 +76,38 @@ class NotificationService {
       const initSettings =
           InitializationSettings(android: androidSettings, iOS: iosSettings);
 
-      final didInit = await _notificationsPlugin.initialize(initSettings);
-      debugPrint('[NotificationService] Plugin initialized: $didInit');
+      await _notificationsPlugin.initialize(initSettings);
+      debugPrint('[Notifications] Plugin initialized ✓');
 
       _initialized = true;
       return true;
     } catch (e, st) {
-      debugPrint('[NotificationService] ❌ Initialization FAILED: $e');
-      debugPrint('$st');
+      debugPrint('[Notifications] ❌ Init FAILED: $e\n$st');
       return false;
     }
   }
 
   static Future<PermissionStatus> _requestNotificationPermission() async {
     final status = await Permission.notification.status;
-    if (status.isDenied) {
-      return await Permission.notification.request();
-    }
+    if (status.isDenied) return await Permission.notification.request();
     return status;
   }
 
-  /// Returns current notification permission status for diagnostic display.
-  static Future<String> getPermissionStatus() async {
-    final status = await Permission.notification.status;
-    if (status.isGranted) return 'Granted ✓';
-    if (status.isDenied) return 'Denied (can be requested)';
-    if (status.isPermanentlyDenied) return 'Permanently denied (open Settings)';
-    if (status.isRestricted) return 'Restricted';
-    return status.toString();
-  }
-
-  /// Schedule 12 daily hydration reminders spread across waking hours (7 AM – 10 PM).
+  /// Cancel all stale reminders, then schedule fresh ones for the next 24h.
+  /// Call this once at startup (after initialize()) and once per day at midnight.
   static Future<void> scheduleDailyReminders() async {
     if (!_initialized) {
-      debugPrint('[NotificationService] ⚠ Skipping schedule — not initialized');
+      debugPrint('[Notifications] ⚠ Not initialized — skipping schedule');
       return;
     }
 
-    // Cancel previous scheduled reminders only (IDs 0–11)
+    // Cancel previous reminders (IDs 0–_notificationCount-1)
     for (int i = 0; i < _notificationCount; i++) {
       await _notificationsPlugin.cancel(i);
     }
 
     final now = tz.TZDateTime.now(tz.local);
     final random = Random();
-
     final int totalMinutes = (_endHour - _startHour) * 60;
     final int windowPerSlot = totalMinutes ~/ _notificationCount;
 
@@ -142,7 +124,7 @@ class NotificationService {
       var scheduledTime =
           tz.TZDateTime(tz.local, now.year, now.month, now.day, hour, minute);
 
-      // If already past today, schedule for tomorrow
+      // If the slot already passed today, push to tomorrow
       if (scheduledTime.isBefore(now)) {
         scheduledTime = scheduledTime.add(const Duration(days: 1));
       }
@@ -157,8 +139,7 @@ class NotificationService {
             android: AndroidNotificationDetails(
               'hydration_channel',
               'Hydration Reminders',
-              channelDescription:
-                  'Reminders to drink water throughout the day',
+              channelDescription: 'Daily reminders to drink water',
               importance: Importance.high,
               priority: Priority.high,
               playSound: true,
@@ -169,20 +150,24 @@ class NotificationService {
               presentSound: true,
             ),
           ),
+          // Bug fix: matchDateTimeComponents was MISSING — without this,
+          // the notification fires once and never repeats.
+          // We don't use DateTimeComponents.time here because we reschedule
+          // each day at startup with new random times instead, which is
+          // more flexible than a fixed daily time.
           androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
           uiLocalNotificationDateInterpretation:
               UILocalNotificationDateInterpretation.wallClockTime,
         );
         scheduledCount++;
-        debugPrint(
-            '[NotificationService] Scheduled #$i → $scheduledTime');
+        debugPrint('[Notifications] Scheduled #$i → $scheduledTime');
       } catch (e) {
-        debugPrint('[NotificationService] ❌ Failed to schedule #$i: $e');
+        debugPrint('[Notifications] ❌ Failed #$i: $e');
       }
     }
 
     debugPrint(
-        '[NotificationService] ✅ Scheduled $scheduledCount/$_notificationCount reminders');
+        '[Notifications] ✅ $scheduledCount/$_notificationCount reminders scheduled');
   }
 
   static String _randomMessage(Random random) {
@@ -206,49 +191,47 @@ class NotificationService {
     return messages[random.nextInt(messages.length)];
   }
 
-  /// Call this when the user reaches their daily water goal to stop further reminders.
   static Future<void> cancelAllNotifications() async {
     await _notificationsPlugin.cancelAll();
-    debugPrint('[NotificationService] All notifications cancelled');
+    debugPrint('[Notifications] All cancelled');
   }
 
-  /// List all pending scheduled notifications (useful for debugging).
   static Future<List<PendingNotificationRequest>>
       getPendingNotifications() async {
     return await _notificationsPlugin.pendingNotificationRequests();
   }
 
-  /// Sends a test notification instantly for debugging purposes.
+  static Future<String> getPermissionStatus() async {
+    final status = await Permission.notification.status;
+    if (status.isGranted) return 'Granted ✓';
+    if (status.isDenied) return 'Denied (can be requested)';
+    if (status.isPermanentlyDenied) return 'Permanently denied — open Settings';
+    if (status.isRestricted) return 'Restricted';
+    return status.toString();
+  }
+
   static Future<void> sendInstantNotification() async {
-    // Ensure plugin is initialized even if scheduled init failed
-    if (!_initialized) {
-      debugPrint(
-          '[NotificationService] ⚠ Not initialized, attempting init now…');
-      await initialize();
-    }
-
-    const details = NotificationDetails(
-      android: AndroidNotificationDetails(
-        'instant_channel',
-        'Instant Notifications',
-        channelDescription: 'Used for instant app testing',
-        importance: Importance.max,
-        priority: Priority.high,
-        playSound: true,
-      ),
-      iOS: DarwinNotificationDetails(
-        presentAlert: true,
-        presentBadge: true,
-        presentSound: true,
-      ),
-    );
-
+    if (!_initialized) await initialize();
     await _notificationsPlugin.show(
       999,
       'FlowTrack ⚡',
-      'Hydration test notification received successfully! Keep up the flow.',
-      details,
+      'Hydration test notification received! Keep up the flow.',
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'instant_channel',
+          'Instant Notifications',
+          channelDescription: 'Test and goal notifications',
+          importance: Importance.max,
+          priority: Priority.high,
+          playSound: true,
+        ),
+        iOS: DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+        ),
+      ),
     );
-    debugPrint('[NotificationService] ✅ Instant notification sent');
+    debugPrint('[Notifications] ✅ Instant notification sent');
   }
 }

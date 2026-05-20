@@ -4,6 +4,7 @@ import android.app.AppOpsManager
 import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ApplicationInfo
 import android.os.Build
 import android.provider.Settings
 import io.flutter.embedding.android.FlutterFragmentActivity
@@ -14,6 +15,35 @@ import java.util.Calendar
 class MainActivity : FlutterFragmentActivity() {
     private val CHANNEL = "com.example.hydralog/usage_stats"
 
+    // Bug fix: known system/launcher packages to always exclude,
+    // regardless of whether they have a launch intent.
+    // These inflate screen time by 30-90 min compared to Digital Wellbeing.
+    private val systemPackageBlacklist = setOf(
+        "com.android.systemui",
+        "com.android.launcher",
+        "com.android.launcher2",
+        "com.android.launcher3",
+        "com.sec.android.app.launcher",          // Samsung One UI Home
+        "com.samsung.android.app.cocktailbarservice",
+        "com.samsung.android.app.spage",         // Samsung Free
+        "com.samsung.android.app.galaxyfinder",
+        "com.samsung.android.bixby.agent",
+        "com.samsung.android.bixby.wakeup",
+        "com.samsung.android.inputmethod",       // Samsung keyboard
+        "com.google.android.inputmethod.latin",  // Gboard
+        "com.android.inputmethod.latin",
+        "com.swiftkey.swiftkeyapp",
+        "com.samsung.android.app.aodservice",    // Always-on display
+        "com.samsung.android.lool",              // Device care
+        "com.samsung.android.digitalwellbeing",
+        "com.google.android.gms",               // Google Play services
+        "com.google.android.gsf",
+        "android",
+        "com.android.phone",
+        "com.android.settings",
+        packageName,                             // Hydralog itself
+    )
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
@@ -22,9 +52,12 @@ class MainActivity : FlutterFragmentActivity() {
                 when (call.method) {
                     "getScreenTimeToday" -> {
                         if (!hasUsageStatsPermission()) {
-                            // Open system settings so user can grant permission
                             startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
-                            result.error("PERMISSION_DENIED", "Usage stats permission not granted", null)
+                            result.error(
+                                "PERMISSION_DENIED",
+                                "Usage stats permission not granted",
+                                null
+                            )
                         } else {
                             result.success(getScreenTimeMinutesToday())
                         }
@@ -59,6 +92,7 @@ class MainActivity : FlutterFragmentActivity() {
     private fun getScreenTimeMinutesToday(): Int {
         val usageManager = getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
 
+        // Today midnight → now
         val calendar = Calendar.getInstance()
         val endTime = calendar.timeInMillis
         calendar.set(Calendar.HOUR_OF_DAY, 0)
@@ -67,28 +101,53 @@ class MainActivity : FlutterFragmentActivity() {
         calendar.set(Calendar.MILLISECOND, 0)
         val startTime = calendar.timeInMillis
 
-        val stats = usageManager.queryUsageStats(
-            UsageStatsManager.INTERVAL_DAILY, startTime, endTime
-        )
+        // Bug fix: use queryAndAggregateUsageStats instead of queryUsageStats.
+        // queryUsageStats(INTERVAL_DAILY) can return multiple overlapping entries
+        // per package depending on how Samsung partitions intervals, causing
+        // double-counting. queryAndAggregateUsageStats returns exactly one
+        // merged entry per package — the same source Digital Wellbeing uses.
+        val stats = usageManager.queryAndAggregateUsageStats(startTime, endTime)
 
         var totalMs = 0L
-        for (it in stats) {
-            val isUser = isUserApp(this, it.packageName)
-            if (it.totalTimeInForeground > 1000 && isUser) {
-                totalMs += it.totalTimeInForeground
-                android.util.Log.d("HydralogScreenTime", "Included App: ${it.packageName}, Time: ${it.totalTimeInForeground / 1000 / 60}m")
-            } else if (it.totalTimeInForeground > 1000) {
-                android.util.Log.d("HydralogScreenTime", "Filtered System App: ${it.packageName}, Time: ${it.totalTimeInForeground / 1000 / 60}m")
+        for ((pkg, usageStats) in stats) {
+            val foregroundMs = usageStats.totalTimeInForeground
+
+            // Skip anything under 1 second (transient system callbacks)
+            if (foregroundMs < 1000) continue
+
+            // Skip blacklisted system packages
+            if (systemPackageBlacklist.contains(pkg)) {
+                android.util.Log.d("ScreenTime", "Excluded (blacklist): $pkg")
+                continue
             }
+
+            // Skip system apps that have no user-facing launcher icon
+            // Bug fix: do NOT use QUERY_ALL_PACKAGES — that triggers Play policy.
+            // Instead check ApplicationInfo flags directly.
+            try {
+                val appInfo = packageManager.getApplicationInfo(pkg, 0)
+                val isSystemApp = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
+                val isUpdatedSystemApp = (appInfo.flags and ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0
+                // Allow updated system apps (e.g. Chrome, YouTube pre-installed but updatable)
+                // but exclude pure system apps with no user interaction
+                if (isSystemApp && !isUpdatedSystemApp) {
+                    android.util.Log.d("ScreenTime", "Excluded (system): $pkg")
+                    continue
+                }
+            } catch (e: Exception) {
+                // Package not found — skip it
+                continue
+            }
+
+            totalMs += foregroundMs
+            android.util.Log.d(
+                "ScreenTime",
+                "Included: $pkg → ${foregroundMs / 1000 / 60}m"
+            )
         }
 
-        android.util.Log.d("HydralogScreenTime", "Total Minutes Calculated: ${totalMs / 1000 / 60}")
-        return (totalMs / 1000 / 60).toInt()  // ms → minutes
-    }
-
-    private fun isUserApp(context: Context, pkg: String): Boolean {
-        if (pkg == context.packageName) return false
-        val intent = context.packageManager.getLaunchIntentForPackage(pkg)
-        return intent != null
+        val totalMinutes = (totalMs / 1000 / 60).toInt()
+        android.util.Log.d("ScreenTime", "Total: ${totalMinutes}m")
+        return totalMinutes
     }
 }

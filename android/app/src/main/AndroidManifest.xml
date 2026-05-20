@@ -2,36 +2,41 @@
 
     <!-- Notifications -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
-    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
+    <!-- Bug fix: USE_EXACT_ALARM is the correct permission on Android 13+.
+         SCHEDULE_EXACT_ALARM requires a runtime user grant in Special App Access
+         and causes silent failures on Samsung devices when not granted.
+         USE_EXACT_ALARM is granted automatically for apps targeting API 33+
+         and is the right choice for foreground reminders. -->
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
 
-
-    <!-- Screen time via UsageStats -->
+    <!-- Screen time via UsageStats (user must grant in Settings → Special App Access) -->
     <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS"
         tools:ignore="ProtectedPermissions"
         xmlns:tools="http://schemas.android.com/tools"/>
 
     <!-- Health Connect permissions -->
     <uses-permission android:name="android.permission.health.READ_STEPS"/>
-    <uses-permission android:name="android.permission.health.READ_ACTIVE_CALORIES_BURNED"/>
+    <!-- Bug fix: was READ_ACTIVE_CALORIES_BURNED — correct type is TOTAL on Android -->
     <uses-permission android:name="android.permission.health.READ_TOTAL_CALORIES_BURNED"/>
     <uses-permission android:name="android.permission.health.READ_SLEEP"/>
     <uses-permission android:name="android.permission.health.READ_HYDRATION"/>
-    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION"/>
     <uses-permission android:name="android.permission.health.WRITE_HYDRATION"/>
+    <!-- Required for step counting on Android 10+ -->
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION"/>
 
     <!-- Internet for Firebase -->
     <uses-permission android:name="android.permission.INTERNET"/>
-    
-    <!-- Required to query intents for third-party apps for Digital Wellbeing screen time -->
-    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"/>
+
+    <!-- Bug fix: QUERY_ALL_PACKAGES removed — triggers Play Store policy review.
+         System app detection now uses ApplicationInfo.FLAG_SYSTEM instead. -->
 
     <application
         android:label="FlowTrack"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
 
-        <!-- Health Connect -->
+        <!-- Health Connect privacy policy rationale screen -->
         <activity-alias
             android:name="ViewPermissionUsageActivity"
             android:exported="true"
@@ -41,17 +46,26 @@
                 <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE"/>
             </intent-filter>
             <intent-filter>
-                <action android:name="android.intent.action.VIEW_PERMISSION_USAGE" />
-                <category android:name="android.intent.category.HEALTH_PERMISSIONS" />
+                <action android:name="android.intent.action.VIEW_PERMISSION_USAGE"/>
+                <category android:name="android.intent.category.HEALTH_PERMISSIONS"/>
             </intent-filter>
         </activity-alias>
 
-        <!-- Notifications -->
-        <receiver android:name="com.dexterous.flutterlocalnotifications.receivers.ActionReceiver"/>
-        <receiver android:name="com.dexterous.flutterlocalnotifications.receivers.NotificationReceiver"/>
-        <receiver android:name="com.dexterous.flutterlocalnotifications.receivers.FirebaseReceiver"/>
+        <!-- flutter_local_notifications receivers -->
+        <receiver android:name="com.dexterous.flutterlocalnotifications.receivers.ActionReceiver"
+            android:exported="false"/>
+        <receiver android:name="com.dexterous.flutterlocalnotifications.receivers.NotificationReceiver"
+            android:exported="false"/>
         <receiver android:name="com.dexterous.flutterlocalnotifications.receivers.BootReceiver"
-            android:enabled="true" android:exported="true"/>
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"/>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
+            </intent-filter>
+        </receiver>
+        <receiver android:name="com.dexterous.flutterlocalnotifications.receivers.ScheduledNotificationReceiver"
+            android:exported="false"/>
 
         <activity
             android:name=".MainActivity"
@@ -75,11 +89,10 @@
     </application>
 
     <queries>
-        <!-- Health Connect -->
+        <!-- Health Connect app -->
         <package android:name="com.google.android.apps.healthdata"/>
         <intent>
-            <action android:name="android.intent.action.PROCESS_TEXT"/>
-            <data android:mimeType="text/plain"/>
+            <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE"/>
         </intent>
     </queries>
 </manifest>

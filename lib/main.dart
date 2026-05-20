@@ -16,7 +16,15 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
 
-  // Force dark status bar icons (white text on dark bg)
+  // Bug fix: initialize & schedule notifications in main(), not inside a widget.
+  // Doing it inside initState() means they aren't set up until the home screen
+  // mounts — which can miss the window entirely if the user is slow to sign in.
+  await NotificationService.initialize();
+  await NotificationService.scheduleDailyReminders();
+
+  final pending = await NotificationService.getPendingNotifications();
+  debugPrint('[main] ${pending.length} notifications pending after startup');
+
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarBrightness: Brightness.dark,
     statusBarIconBrightness: Brightness.light,
@@ -47,24 +55,22 @@ class FlowTrackApp extends StatelessWidget {
           primary: Color(0xFF64D2FF),
           secondary: Color(0xFF30D158),
           surface: Color(0xFF1C1C1E),
-          background: Colors.black,
         ),
-        // Bottom nav
         bottomNavigationBarTheme: const BottomNavigationBarThemeData(
           backgroundColor: Color(0xFF1C1C1E),
           selectedItemColor: Color(0xFF64D2FF),
           unselectedItemColor: Color(0xFF636366),
           type: BottomNavigationBarType.fixed,
-          selectedLabelStyle: TextStyle(fontSize: 10, fontWeight: FontWeight.w500),
+          selectedLabelStyle:
+              TextStyle(fontSize: 10, fontWeight: FontWeight.w500),
           unselectedLabelStyle: TextStyle(fontSize: 10),
           elevation: 0,
         ),
-        // Dialogs
         dialogTheme: const DialogThemeData(
           backgroundColor: Color(0xFF1C1C1E),
-          titleTextStyle: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w600),
+          titleTextStyle: TextStyle(
+              color: Colors.white, fontSize: 17, fontWeight: FontWeight.w600),
         ),
-        // Text
         textTheme: const TextTheme(
           bodyMedium: TextStyle(color: Colors.white),
         ),
@@ -120,24 +126,6 @@ class _FlowTrackHomeState extends State<FlowTrackHome> {
     HistoryScreen(),
     ProfileScreen(),
   ];
-
-  @override
-  void initState() {
-    super.initState();
-    _initNotifications();
-  }
-
-  Future<void> _initNotifications() async {
-    final success = await NotificationService.initialize();
-    if (success) {
-      await NotificationService.scheduleDailyReminders();
-      // Debug: log pending count
-      final pending = await NotificationService.getPendingNotifications();
-      debugPrint('[FlowTrack] ${pending.length} notifications pending');
-    } else {
-      debugPrint('[FlowTrack] ⚠ Notification init failed – check logs');
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
