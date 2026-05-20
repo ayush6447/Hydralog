@@ -37,5 +37,3 @@ Hydralog is a sleek, user-friendly Flutter app designed to help you monitor and 
    ```bash
    git clone https://github.com/ayush6447/Hydralog.git
    cd Hydralog
-
-
