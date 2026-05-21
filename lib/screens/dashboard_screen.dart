@@ -204,45 +204,169 @@ class _SummaryRingCardState extends State<_SummaryRingCard> {
 
   Future<void> _showCustom() async {
     final controller = TextEditingController();
-    await showDialog(
+    // Quick-pick presets shown inside the sheet
+    const presets = [150, 200, 330, 400, 600];
+
+    await showModalBottomSheet(
       context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: const Color(0xFF1C1C1E),
-        title: const Text('Custom amount (ml)',
-            style: TextStyle(color: Colors.white)),
-        content: TextField(
-          controller: controller,
-          keyboardType: TextInputType.number,
-          style: const TextStyle(color: Colors.white),
-          decoration: InputDecoration(
-            hintText: 'e.g. 240',
-            hintStyle: TextStyle(color: Colors.white.withOpacity(0.4)),
-            enabledBorder: const UnderlineInputBorder(
-                borderSide: BorderSide(color: Color(0xFF30D158))),
-            focusedBorder: const UnderlineInputBorder(
-                borderSide: BorderSide(color: Color(0xFF30D158))),
-          ),
-          autofocus: true,
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('Cancel',
-                  style: TextStyle(color: Colors.white.withOpacity(0.6)))),
-          TextButton(
-            onPressed: () {
-              final v = int.tryParse(controller.text);
-              if (v != null && v > 0) {
-                widget.provider.addWater(v);
-                Navigator.pop(context);
-              }
-            },
-            child: const Text('Add',
-                style: TextStyle(
-                    color: Color(0xFF30D158), fontWeight: FontWeight.w600)),
-          ),
-        ],
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF1C1C1E),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
+      builder: (ctx) {
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 24,
+            right: 24,
+            top: 20,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 28,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Drag handle
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Title
+              const Text(
+                'Add water',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Type a custom amount or pick a preset',
+                style: TextStyle(
+                    color: Colors.white.withOpacity(0.4), fontSize: 13),
+              ),
+              const SizedBox(height: 20),
+
+              // Preset chips row
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: presets.map((ml) {
+                    return GestureDetector(
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        widget.provider.addWater(ml);
+                        Navigator.pop(ctx);
+                      },
+                      child: Container(
+                        margin: const EdgeInsets.only(right: 8),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF64D2FF).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                              color: const Color(0xFF64D2FF).withOpacity(0.25)),
+                        ),
+                        child: Text(
+                          '$ml ml',
+                          style: const TextStyle(
+                            color: Color(0xFF64D2FF),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Custom amount input
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.06),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                      color: Colors.white.withOpacity(0.1), width: 0.5),
+                ),
+                child: Row(
+                  children: [
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: TextField(
+                        controller: controller,
+                        keyboardType: TextInputType.number,
+                        autofocus: true,
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w500),
+                        decoration: InputDecoration(
+                          hintText: '0',
+                          hintStyle: TextStyle(
+                              color: Colors.white.withOpacity(0.2),
+                              fontSize: 18),
+                          border: InputBorder.none,
+                          isDense: true,
+                          contentPadding:
+                              const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(right: 16),
+                      child: Text(
+                        'ml',
+                        style: TextStyle(
+                            color: Colors.white.withOpacity(0.35),
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Add button
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF64D2FF),
+                    foregroundColor: Colors.black,
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
+                  ),
+                  onPressed: () {
+                    final v = int.tryParse(controller.text);
+                    if (v != null && v > 0) {
+                      HapticFeedback.lightImpact();
+                      widget.provider.addWater(v);
+                      Navigator.pop(ctx);
+                    }
+                  },
+                  child: const Text('Add',
+                      style: TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.w700)),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -371,22 +495,66 @@ class _SummaryRingCardState extends State<_SummaryRingCard> {
   }
 
   Future<void> _showRemoveDialog() async {
-    await showDialog(
+    await showModalBottomSheet(
       context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: const Color(0xFF1C1C1E),
-        title: const Text('Remove Water',
-            style: TextStyle(color: Colors.white)),
-        content: Column(
+      backgroundColor: const Color(0xFF1C1C1E),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 36),
+        child: Column(
           mainAxisSize: MainAxisSize.min,
-          children: [250, 500, 750].map((ml) => ListTile(
-            leading: const Icon(Icons.remove_circle_outline, color: Colors.redAccent),
-            title: Text('$ml ml', style: const TextStyle(color: Colors.white)),
-            onTap: () {
-              widget.provider.removeWater(ml);
-              Navigator.pop(context);
-            },
-          )).toList(),
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Text('Remove water',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700)),
+            const SizedBox(height: 4),
+            Text('Logged too much?',
+                style: TextStyle(
+                    color: Colors.white.withOpacity(0.4), fontSize: 13)),
+            const SizedBox(height: 20),
+            ...[250, 500, 750].map((ml) => GestureDetector(
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    widget.provider.removeWater(ml);
+                    Navigator.pop(ctx);
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 18, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFF375F).withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                          color: const Color(0xFFFF375F).withOpacity(0.2)),
+                    ),
+                    child: Text(
+                      '− $ml ml',
+                      style: const TextStyle(
+                          color: Color(0xFFFF375F),
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                )),
+          ],
         ),
       ),
     );

@@ -218,6 +218,132 @@ class ProfileScreen extends StatelessWidget {
               ),
             ),
 
+
+            const SliverToBoxAdapter(child: SizedBox(height: 12)),
+
+            // ── Developer card ───────────────────────────────────────
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1C1C1E),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF64D2FF).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(Icons.code_rounded,
+                                color: Color(0xFF64D2FF), size: 22),
+                          ),
+                          const SizedBox(width: 14),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Built by Ayush',
+                                  style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 15)),
+                              Text('FlowTrack v2.0.0',
+                                  style: TextStyle(
+                                      color: Colors.white.withOpacity(0.4),
+                                      fontSize: 12)),
+                            ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Divider(
+                          height: 0.5,
+                          thickness: 0.5,
+                          color: Colors.white.withOpacity(0.08)),
+                      const SizedBox(height: 14),
+                      _devLink(
+                        Icons.logo_dev_rounded,
+                        'GitHub',
+                        'ayush6447',
+                        'github.com/ayush6447',
+                        const Color(0xFFE6EDF3),
+                      ),
+                      const SizedBox(height: 10),
+                      _devLink(
+                        Icons.work_rounded,
+                        'LinkedIn',
+                        'Ayush Kumar',
+                        'linkedin.com/in/ayush6447',
+                        const Color(0xFF0A66C2),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            // ── What is coming next ──────────────────────────────────
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                child: Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1C1C1E),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF30D158).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(Icons.rocket_launch_rounded,
+                                color: Color(0xFF30D158), size: 22),
+                          ),
+                          const SizedBox(width: 14),
+                          const Text("What is coming",
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 15)),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      _roadmapItem('Heart rate monitoring',
+                          'Read resting and active BPM from both devices'),
+                      _roadmapItem('Workout logging',
+                          'Log runs, gym sessions and track calories burned'),
+                      _roadmapItem('Weekly health report',
+                          'Auto-generated PDF summary every Sunday'),
+                      _roadmapItem('AI hydration coach',
+                          'Personalised tips based on your activity and weather'),
+                      _roadmapItem('Weather-aware goals',
+                          'Raise water goal automatically on hot days'),
+                      _roadmapItem('Friends and challenges',
+                          'Compete on daily step and hydration leaderboards'),
+                      _roadmapItem('Wear OS and watchOS',
+                          'Log water and see stats from your wrist'),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
             const SliverToBoxAdapter(child: SizedBox(height: 32)),
           ],
         );
@@ -293,6 +419,80 @@ class ProfileScreen extends StatelessWidget {
                 color: Colors.white.withOpacity(0.25), size: 20),
           ],
         ),
+      ),
+    );
+  }
+
+
+  Widget _devLink(IconData icon, String platform, String handle,
+      String url, Color color) {
+    return Row(
+      children: [
+        Container(
+          width: 34,
+          height: 34,
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.12),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, color: color, size: 18),
+        ),
+        const SizedBox(width: 12),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(platform,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500)),
+            Text(url,
+                style: TextStyle(
+                    color: Colors.white.withOpacity(0.35), fontSize: 12)),
+          ],
+        ),
+        const Spacer(),
+        Icon(Icons.arrow_outward_rounded,
+            color: Colors.white.withOpacity(0.2), size: 16),
+      ],
+    );
+  }
+
+  Widget _roadmapItem(String title, String subtitle) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 6,
+            height: 6,
+            margin: const EdgeInsets.only(top: 5),
+            decoration: BoxDecoration(
+              color: const Color(0xFF30D158).withOpacity(0.6),
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500)),
+                const SizedBox(height: 2),
+                Text(subtitle,
+                    style: TextStyle(
+                        color: Colors.white.withOpacity(0.35),
+                        fontSize: 12,
+                        height: 1.4)),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
